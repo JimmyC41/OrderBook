@@ -3,6 +3,12 @@
   <ItemGroup>
     <ClCompile Include="test.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="..\OrderBookCpp\src\InputHandler.cpp">
+      <Filter>OrderBookCpp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\OrderBookCpp\src\OrderBook.cpp">
+      <Filter>OrderBookCpp</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -15,5 +21,13 @@
     <Text Include="TestFiles\Match_GoodTillCancel.txt" />
     <Text Include="TestFiles\Match_Market.txt" />
     <Text Include="TestFiles\Modify_Side.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="OrderBookCpp">
+      <UniqueIdentifier>{4ad7de7e-805c-4d9e-bdbc-61758575d7c3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

@@ -18,28 +18,11 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="include\enum\OrderEvent.h" />
-    <ClInclude Include="include\enum\OrderType.h" />
-    <ClInclude Include="include\enum\Side.h" />
-    <ClInclude Include="include\LevelInfo.h" />
-    <ClInclude Include="include\Order.h" />
-    <ClInclude Include="include\OrderBook.h" />
-    <ClInclude Include="include\OrderBookLevelInfos.h" />
-    <ClInclude Include="include\OrderModify.h" />
-    <ClInclude Include="include\Trade.h" />
-    <ClInclude Include="include\TradeInfo.h" />
-    <ClInclude Include="include\Using.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\OrderBook.cpp" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{a6039bd0-0285-4025-aec2-6b3eb7ff59b0}</ProjectGuid>
-    <RootNamespace>OrderBookCpp</RootNamespace>
+    <ProjectGuid>{3a626848-4db8-403c-bef0-6efb562006d1}</ProjectGuid>
+    <RootNamespace>OrderBookBenchMark</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -121,6 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>../Engine</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -144,6 +128,16 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Engine\Engine.vcxproj">
+      <Project>{a6039bd0-0285-4025-aec2-6b3eb7ff59b0}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Engine\src\InputHandler.cpp" />
+    <ClCompile Include="..\Engine\src\OrderBook.cpp" />
+    <ClCompile Include="Benchmark.cpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
