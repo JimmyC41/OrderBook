@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="test.cpp" />
+    <ClCompile Include="pch.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="TestFiles\Cancel_Success.txt" />
+    <Text Include="TestFiles\Match_FillAndKill.txt" />
+    <Text Include="TestFiles\Match_FillOrKill_Hit.txt" />
+    <Text Include="TestFiles\Match_FillOrKill_Miss.txt" />
+    <Text Include="TestFiles\Match_GoodTillCancel.txt" />
+    <Text Include="TestFiles\Match_Market.txt" />
+    <Text Include="TestFiles\Modify_Side.txt" />
+  </ItemGroup>
+</Project>
