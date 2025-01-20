@@ -19,23 +19,30 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\enum\OrderEvent.h" />
-    <ClInclude Include="include\enum\OrderType.h" />
-    <ClInclude Include="include\enum\Side.h" />
-    <ClInclude Include="include\LevelInfo.h" />
-    <ClInclude Include="include\Order.h" />
-    <ClInclude Include="include\OrderBook.h" />
-    <ClInclude Include="include\OrderBookLevelInfos.h" />
-    <ClInclude Include="include\OrderModify.h" />
-    <ClInclude Include="include\Trade.h" />
-    <ClInclude Include="include\TradeInfo.h" />
-    <ClInclude Include="include\Using.h" />
-    <ClInclude Include="include\util\InputHandler.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="src\InputHandler.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\OrderBook.cpp" />
+    <ClCompile Include="Src\QueueManager.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\Enum\OrderEvent.h" />
+    <ClInclude Include="include\Enum\OrderType.h" />
+    <ClInclude Include="include\Enum\Side.h" />
+    <ClInclude Include="include\Orderbook\LevelInfo.h" />
+    <ClInclude Include="include\Orderbook\Order.h" />
+    <ClInclude Include="include\Orderbook\OrderBook.h" />
+    <ClInclude Include="include\Orderbook\OrderBookLevelInfos.h" />
+    <ClInclude Include="include\Orderbook\OrderModify.h" />
+    <ClInclude Include="include\Orderbook\Trade.h" />
+    <ClInclude Include="include\Orderbook\TradeInfo.h" />
+    <ClInclude Include="include\Orderbook\Using.h" />
+    <ClInclude Include="Include\Queue\EventType.h" />
+    <ClInclude Include="Include\Queue\Payload.h" />
+    <ClInclude Include="Include\Queue\QueueEvent.h" />
+    <ClInclude Include="Include\Queue\QueueManager.h" />
+    <ClInclude Include="Include\Util\EventInformation.h" />
+    <ClInclude Include="include\Util\InputHandler.h" />
+    <ClInclude Include="Include\Util\TestResult.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

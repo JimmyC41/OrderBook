@@ -1,56 +1,30 @@
 #pragma once
 
 #include <filesystem>
-#include <vector>
 #include <string_view>
 #include <tuple>
 #include <stdexcept>
 
-#include "../OrderBook.h"
-#include "../Order.h"
-#include "../Using.h"
-
-enum class EventType {
-    AddOrder,
-    ModifyOrder,
-    CancelOrder,
-};
-
-struct Information {
-    EventType eventType_;
-    OrderId orderId_;
-    OrderType orderType_;
-    Side side_;
-    Price price_;
-    Quantity quantity_;
-};
-
-using Informations = std::vector<Information>;
-
-struct Result {
-    std::size_t allCount_;
-    std::size_t bidCount_;
-    std::size_t askCount_;
-};
-
-using Results = std::vector<Result>;
+#include "../OrderBook/OrderBook.h"
+#include "../Util/EventInformation.h"
+#include "../Util/TestResult.h"
 
 class InputHandler {
 public:
-    // Reads and parses input events and expected results from a file
-    std::tuple<Informations, Result> GetOrderInformations(const std::filesystem::path& path) const;
+
+    std::tuple<EventInformations, TestResult> GetEventInformationsFromFile(const std::filesystem::path& path) const;
 
 private:
-    // Helper methods for parsing
-    std::uint32_t ToNumber(const std::string_view& str) const;
-    bool TryParseResult(const std::string_view& str, Result& result) const;
-    bool TryParseOrderInfo(const std::string_view& str, Information& event) const;
-    std::vector<std::string_view> Split(const std::string_view& str, char delimiter) const;
 
-    // Specific parsers for different fields
+    bool TryParseEventInfo(const std::string_view& str, EventInformation& event) const;
+    bool TryParseTestResult(const std::string_view& str, TestResult& result) const;
+
     OrderId ParseOrderId(const std::string_view& str) const;
     OrderType ParseOrderType(const std::string_view& str) const;
     Side ParseSide(const std::string_view& str) const;
     Price ParsePrice(const std::string_view& str) const;
     Quantity ParseQuantity(const std::string_view& str) const;
+
+    std::uint32_t ToNumber(const std::string_view& str) const;
+    std::vector<std::string_view> Split(const std::string_view& str, char delimiter) const;
 };

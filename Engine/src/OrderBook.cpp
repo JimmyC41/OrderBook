@@ -1,31 +1,133 @@
-#include "../include/OrderBook.h"
+#include "../Include/OrderBook/OrderBook.h"
 
-Trades OrderBook::AddOrder(OrderPointer order)
+void OrderBook::AddOrderToQueue(OrderId id, OrderType type, Side side, Price price, Quantity quantity)
 {
-	std::scoped_lock ordersLock{ ordersMutex_ };
+	queueManager_.EnqueueEvent(QueueEvent
+		{
+			EventType::AddOrder,
+			AddOrderPayload{ id, type, side, price, quantity}
+		});
+}
 
+void OrderBook::ModifyOrderToQueue(OrderId id, Side side, Price price, Quantity quantity)
+{
+	queueManager_.EnqueueEvent(QueueEvent
+		{
+			EventType::ModifyOrder,
+			ModifyOrderPayload{ id, side, price, quantity }
+		});
+}
+
+void OrderBook::CancelOrderToQueue(OrderId id)
+{
+	queueManager_.EnqueueEvent(QueueEvent
+		{
+			EventType::CancelOrder,
+			CancelOrderPayload{ id }
+		});
+}
+
+void OrderBook::Display() const
+{
+	queueManager_.WaitForAllEvents();
+
+	std::scoped_lock ordersLock{ ordersMutex_ };
+	
+	if (orders_.empty())
+	{
+		std::cout << "Orderbook is empty!\n" << std::endl;
+		return;
+	}
+
+	std::cout << "------ Displaying the Orderbook ------\n";
+	std::cout << std::format("Orderbook contains {} orders\n", orders_.size()) << std::endl;
+
+	auto orderInfos = GetOrderInfos();
+	auto bidLevelInfos = orderInfos.GetBids();
+	auto askLevelInfos = orderInfos.GetAsks();
+
+	std::cout << "Displaying Bids:\n";
+	for (const auto& bidLevel : bidLevelInfos)
+	{
+		std::cout << std::format("\t{{ Price: {}, Quantity: {} }}\n",
+			bidLevel.price_, bidLevel.quantity_);
+	}
+
+	std::cout << "Displaying Asks:\n";
+	for (const auto& askLevel : askLevelInfos)
+	{
+		std::cout << std::format("\t{{ Price: {}, Quantity: {} }}\n",
+			askLevel.price_, askLevel.quantity_);
+	}
+
+	std::cout << "\n";
+}
+
+std::size_t OrderBook::Size() const
+{
+	queueManager_.WaitForAllEvents();
+
+	std::scoped_lock ordersLock{ ordersMutex_ };
+	return orders_.size();
+}
+
+OrderBookLevelInfos OrderBook::GetOrderInfos() const
+{
+	queueManager_.WaitForAllEvents();
+
+	LevelInfos bidInfos, askInfos;
+	bidInfos.reserve(orders_.size());
+	askInfos.reserve(orders_.size());
+
+	auto CreateLevelInfos = [](Price price, const OrderPointers& orders)
+		{
+			return LevelInfo{ price, std::accumulate(orders.begin(), orders.end(), (Quantity)0,
+				[](Quantity runningSum, const OrderPointer& order)
+				{ return runningSum + order->GetRemainingQuantity(); }) };
+		};
+
+	for (const auto& [price, orders] : bids_)
+		bidInfos.push_back(CreateLevelInfos(price, orders));
+
+	for (const auto& [price, orders] : asks_)
+		askInfos.push_back(CreateLevelInfos(price, orders));
+
+	return OrderBookLevelInfos{ bidInfos, askInfos };
+}
+
+Trades OrderBook::AddOrderInternal(OrderPointer order)
+{
 	if (orders_.contains(order->GetOrderId()))
+	{
+		// std::cout << std::format("Add: Order with {} already exists!\n", order->GetOrderId()) << std::flush;
 		return { };
+	}
 
 	// Check if FAK can be matched
 
 	if (order->GetOrderType() == OrderType::FillAndKill &&
 		!CanMatchInternal(order->GetSide(), order->GetPrice()))
+	{
+		// std::cout << std::format("Add: FAK Order {} cannot be matched!\n", order->GetOrderId()) << std::flush;
 		return { };
+	}
 
 	// Check if FOK can be fully filled
 
 	if (order->GetOrderType() == OrderType::FillOrKill &&
 		!CanBeFullyFilledInternal(order->GetSide(), order->GetPrice(), order->GetRemainingQuantity()))
+	{
+		// std::cout << std::format("Add: FOK Order {} cannot be fully filled!\n", order->GetOrderId()) << std::flush;
 		return { };
+	}
 
 	// Set the price if the order is a market order
 
 	auto setMarketPrice = [&](auto& order, auto& ordersOtherSide)
-		{
-			const auto& [worstPrice, _] = *ordersOtherSide.rbegin();
-			order->SetMarketPrice(worstPrice);
-		};
+	{
+		const auto& [worstPrice, _] = *ordersOtherSide.rbegin();
+		order->SetMarketPrice(worstPrice);
+	};
 
 	if (order->GetOrderType() == OrderType::Market)
 	{
@@ -53,156 +155,62 @@ Trades OrderBook::AddOrder(OrderPointer order)
 	// Update the level info struct
 
 	OrderAddEventInternal(order);
+	// std::cout << std::format("Add: {}\n", order->ToString()) << std::flush;
 
 	// Run matching algorithm and return new trades (if any)
 
 	return MatchOrdersInternal();
 }
 
-Trades OrderBook::ModifyOrder(OrderModify order)
+Trades OrderBook::ModifyOrderInternal(OrderModify order)
 {
 	OrderType orderType;
 
-	// Fetch the existing order
+	if (!orders_.contains(order.GetOrderId()))
+		// std::cout << std::format("Modify: Order {} does not exist!\n", order.GetOrderId());
+		return { };
 
-	{
-		std::scoped_lock ordersLock{ ordersMutex_ };
-
-		if (!orders_.contains(order.GetOrderId()))
-			return { };
-
-		const auto& [existingOrder, _] = orders_.at(order.GetOrderId());
-		orderType = existingOrder->GetOrderType();
-	}
+	const auto& [existingOrder, _] = orders_.at(order.GetOrderId());
+	orderType = existingOrder->GetOrderType();
 
 	// Cancel the existing order and add the modified order, returning any trades
 
-	CancelOrder(order.GetOrderId());
-	return AddOrder(order.ToOrderPointer(orderType));
+	CancelOrderInternal(order.GetOrderId());
+	return AddOrderInternal(order.ToOrderPointer(orderType));
 }
 
-void OrderBook::CancelOrder(OrderId orderId)
+void OrderBook::CancelOrderInternal(OrderId orderId)
 {
-	std::scoped_lock ordersLock{ ordersMutex_ };
-	CancelOrderInternal(orderId);
-}
-
-void OrderBook::CancelOrders(OrderIds orderIds)
-{
-	std::scoped_lock ordersLock{ ordersMutex_ };
-	CancelOrdersInternal(orderIds);
-}
-
-void OrderBook::Display() const
-{
-	if (orders_.empty())
-	{
-		std::cout << "Orderbook is empty!\n" << std::endl;
+	if (!orders_.contains(orderId))
+		// std::cout << std::format("Cancel: Order {} does not exist!\n", orderId);
 		return;
-	}
 
-	std::scoped_lock ordersLock{ ordersMutex_ };
+	// Remove order from the aggregate orders map
 
-	std::cout << "------ Displaying the Orderbook ------\n";
+	const auto [order, iterator] = orders_.at(orderId);
+	orders_.erase(orderId);
 
-	std::cout << "Displaying Bids:\n";
-	if (!bids_.empty())
-	{
-		for (const auto& [price, bids] : bids_)
-			for (const auto& bid : bids)
-				std::cout << "\t" << bid->ToString() << std::endl;
-	}
+	// Lambda to remove the order from its level on the orderbook
 
-	std::cout << "Displaying Asks:\n";
-	if (!asks_.empty())
-	{
-		for (const auto& [price, asks] : asks_)
-			for (const auto& ask : asks)
-				std::cout << "\t" << ask->ToString() << std::endl;
-	}
-
-	std::cout << std::format("Orderbook contains {} orders\n", orders_.size());
-}
-
-std::size_t OrderBook::Size() const
-{
-	std::scoped_lock ordersLock{ ordersMutex_ };
-	return orders_.size();
-}
-
-OrderBookLevelInfos OrderBook::GetOrderInfos() const
-{
-	LevelInfos bidInfos, askInfos;
-	bidInfos.reserve(orders_.size());
-	askInfos.reserve(orders_.size());
-
-	auto CreateLevelInfos = [](Price price, const OrderPointers& orders)
+	auto removeOrderFromLevel = [&](auto& side, auto& order)
 		{
-			return LevelInfo{ price, std::accumulate(orders.begin(), orders.end(), (Quantity)0,
-				[](Quantity runningSum, const OrderPointer& order)
-				{ return runningSum + order->GetRemainingQuantity(); }) };
+			auto price = order->GetPrice();
+			auto& level = side.at(price);
+
+			// If removal of order leaves a level empty, clear the level
+
+			level.erase(iterator);
+			if (level.empty()) side.erase(price);
 		};
 
-	for (const auto& [price, orders] : bids_)
-		bidInfos.push_back(CreateLevelInfos(price, orders));
+	if (order->GetSide() == Side::Sell) removeOrderFromLevel(asks_, order);
+	if (order->GetSide() == Side::Buy) removeOrderFromLevel(bids_, order);
 
-	for (const auto& [price, orders] : asks_)
-		askInfos.push_back(CreateLevelInfos(price, orders));
+	// Update the levels info struct
 
-	return OrderBookLevelInfos{ bidInfos, askInfos };
-}
+	OrderCancelEventInternal(order);
 
-bool OrderBook::CanMatchInternal(Side side, Price price) const
-{
-	if (side == Side::Buy)
-		return !asks_.empty() && price >= asks_.begin()->first;
-	else
-		return !bids_.empty() && price <= bids_.begin()->first;
-}
-
-// Check if the quantity requested can be fulfilled by the aggregate
-// quantity available at crossed price levels on the opposite side
-
-bool OrderBook::CanBeFullyFilledInternal(Side side, Price price, Quantity quantity) const
-{
-	if ((side == Side::Buy && asks_.empty()) ||
-		(side == Side::Sell && bids_.empty()) ||
-		!CanMatchInternal(side, price))
-		return false;
-
-	// Find the threshold price for executing an order
-	// E.g. If side is buy, threshold price is the lowest ask
-
-	Price bestPrice = (side == Side::Buy && !asks_.empty())
-		? asks_.begin()->first
-		: bids_.begin()->first;
-
-	// A level is valid if we can cross the orderbook
-
-	for (const auto& [levelPrice, levelDepth] : levels_)
-	{
-		// Skip levels which do not cross the orderbook
-
-		if ((side == Side::Buy && levelPrice < bestPrice) ||
-			(side == Side::Sell && levelPrice > bestPrice))
-			continue;
-
-		// Skip levels outside our range 
-		// I.e. above a buy price or below a sell price
-
-		if ((side == Side::Buy && levelPrice > price) ||
-			(side == Side::Sell && levelPrice < price))
-			continue;
-
-		// Check if level can fill completely, otherwise reduce remaining quantity
-
-		if (quantity <= levelDepth.quantity_)
-			return true;
-
-		quantity -= levelDepth.quantity_;
-	}
-
-	return false;
+	// std::cout << std::format("Cancel: {}\n", order->ToString());
 }
 
 Trades OrderBook::MatchOrdersInternal()
@@ -278,41 +286,58 @@ Trades OrderBook::MatchOrdersInternal()
 	return trades;
 }
 
-void OrderBook::CancelOrderInternal(OrderId orderId)
+bool OrderBook::CanMatchInternal(Side side, Price price) const
 {
-	if (!orders_.contains(orderId))
-		return;
-
-	// Remove order from the aggregate orders map
-
-	const auto [order, iterator] = orders_.at(orderId);
-	orders_.erase(orderId);
-
-	// Lambda to remove the order from its level on the orderbook
-
-	auto removeOrderFromLevel = [&](auto& side, auto& order)
-		{
-			auto price = order->GetPrice();
-			auto& level = side.at(price);
-
-			// If removal of order leaves a level empty, clear the level
-
-			level.erase(iterator);
-			if (level.empty()) side.erase(price);
-		};
-
-	if (order->GetSide() == Side::Sell) removeOrderFromLevel(asks_, order);
-	if (order->GetSide() == Side::Buy) removeOrderFromLevel(bids_, order);
-
-	// Update the levels info struct
-
-	OrderCancelEventInternal(order);
+	if (side == Side::Buy)
+		return !asks_.empty() && price >= asks_.begin()->first;
+	else
+		return !bids_.empty() && price <= bids_.begin()->first;
 }
 
-void OrderBook::CancelOrdersInternal(OrderIds orderIds)
+// Check if the quantity requested can be fulfilled by the aggregate
+// quantity available at crossed price levels on the opposite side
+
+bool OrderBook::CanBeFullyFilledInternal(Side side, Price price, Quantity quantity) const
 {
-	for (auto& orderId : orderIds) CancelOrderInternal(orderId);
-} 
+	if ((side == Side::Buy && asks_.empty()) ||
+		(side == Side::Sell && bids_.empty()) ||
+		!CanMatchInternal(side, price))
+		return false;
+
+	// Find the threshold price for executing an order
+	// E.g. If side is buy, threshold price is the lowest ask
+
+	Price bestPrice = (side == Side::Buy && !asks_.empty())
+		? asks_.begin()->first
+		: bids_.begin()->first;
+
+	// A level is valid if we can cross the orderbook
+
+	for (const auto& [levelPrice, levelDepth] : levels_)
+	{
+		// Skip levels which do not cross the orderbook
+
+		if ((side == Side::Buy && levelPrice < bestPrice) ||
+			(side == Side::Sell && levelPrice > bestPrice))
+			continue;
+
+		// Skip levels outside our range 
+		// I.e. above a buy price or below a sell price
+
+		if ((side == Side::Buy && levelPrice > price) ||
+			(side == Side::Sell && levelPrice < price))
+			continue;
+
+		// Check if level can fill completely, otherwise reduce remaining quantity
+
+		if (quantity <= levelDepth.quantity_)
+			return true;
+
+		quantity -= levelDepth.quantity_;
+	}
+
+	return false;
+}
 
 void OrderBook::UpdateLevelsInternal(Price price, Quantity quantity, OrderEvent event)
 {
@@ -366,4 +391,46 @@ void OrderBook::OrderMatchEventInternal(Price price, Quantity quantity, bool isF
 		quantity,
 		isFullyFilled ? OrderEvent::CancelOrder : OrderEvent::MatchOrder
 	);
+}
+
+void OrderBook::HandleEvent(const QueueEvent& event)
+{
+	std::scoped_lock ordersLock{ ordersMutex_ };
+
+	std::visit([this](auto&& payload)
+	{
+		using T = std::decay_t<decltype(payload)>;
+		if constexpr (std::is_same_v<T, AddOrderPayload>)
+			HandleAddOrderInternal(payload);
+		else if constexpr (std::is_same_v<T, ModifyOrderPayload>)
+			HandleModifyOrderInternal(payload);
+		else if constexpr (std::is_same_v<T, CancelOrderPayload>)
+			HandleCancelOrderInternal(payload);
+	}, event.payload_);
+}
+
+void OrderBook::HandleAddOrderInternal(const AddOrderPayload& payload)
+{
+	AddOrderInternal(std::make_shared<Order>(
+		payload.orderId_,
+		payload.orderType_,
+		payload.side_,
+		payload.price_,
+		payload.quantity_
+	));
+}
+
+void OrderBook::HandleModifyOrderInternal(const ModifyOrderPayload& payload)
+{
+	ModifyOrderInternal(OrderModify{
+		payload.orderId_,
+		payload.side_,
+		payload.price_,
+		payload.quantity_
+	});
+}
+
+void OrderBook::HandleCancelOrderInternal(const CancelOrderPayload& payload)
+{
+	CancelOrderInternal(payload.orderId_);
 }

@@ -3,9 +3,9 @@
 #include <list>
 #include <format>
 
-#include "Enum/OrderType.h"
-#include "Enum/Side.h"
 #include "Using.h"
+#include "../Enum/OrderType.h"
+#include "../Enum/Side.h"
 
 class Order
 {
@@ -32,9 +32,10 @@ public:
 	void SetMarketPrice(Price price) { price_ = price; }
 
 	std::string ToString() const {
-		return std::format("ID: {}, Type: {}, Price: {}, Quantity: {}",
+		return std::format("ID: {}, Type: {}, Side: {}, Price: {}, Quantity: {}",
 			GetOrderId(),
 			OrderTypeToString(GetOrderType()),
+			SideToString(GetSide()),
 			GetPrice(),
 			GetRemainingQuantity());
 	}

@@ -11,30 +11,39 @@
 #include <string_view>
 #include <optional>
 #include <numeric>
+#include <variant>
 
 #include "Using.h"
 #include "Order.h"
 #include "OrderModify.h"
 #include "Trade.h"
-#include "Enum/OrderEvent.h"
 #include "OrderbookLevelInfos.h"
+#include "../Enum/OrderEvent.h"
+#include "../Queue/QueueManager.h"
 
 class OrderBook
 {
 public:
 
-	OrderBook() = default;
+	OrderBook()
+		: queueManager_([this](const QueueEvent& event) { HandleEvent(event); })
+	{ }
 
-	// Self-locking methods
+	// APIs to queue order requests
 
-	Trades AddOrder(OrderPointer order);
-	Trades ModifyOrder(OrderModify order);
-	void CancelOrder(OrderId orderId);
-	void CancelOrders(OrderIds orderIds);
+	void AddOrderToQueue(OrderId id, OrderType type, Side side, Price price, Quantity quantity);
+	void ModifyOrderToQueue(OrderId id, Side side, Price price, Quantity quantity);
+	void CancelOrderToQueue(OrderId id);
+
+	// API to process the event in the OrderBook
+
+	void HandleEvent(const QueueEvent& event);
+
+	// Other public APIs
 
 	void Display() const;
-	std::size_t Size() const;
 	OrderBookLevelInfos GetOrderInfos() const;
+	std::size_t Size() const;
 
 private:
 
@@ -56,14 +65,22 @@ private:
 	std::map<Price, OrderPointers, std::less<Price>> asks_;
 	std::unordered_map<OrderId, OrderEntry> orders_;
 	std::unordered_map<Price, LevelDepth> levels_;
+	QueueManager queueManager_;
 
-	// Lock-free methods for internal use
+	// Non-locking methods
 
+	void HandleAddOrderInternal(const AddOrderPayload& payload);
+	void HandleModifyOrderInternal(const ModifyOrderPayload& payload);
+	void HandleCancelOrderInternal(const CancelOrderPayload& payload);
+
+	Trades AddOrderInternal(OrderPointer order);
+	Trades ModifyOrderInternal(OrderModify order);
+	void CancelOrderInternal(OrderId orderId);
+	
+	Trades MatchOrdersInternal();
 	bool CanMatchInternal(Side side, Price price) const;
 	bool CanBeFullyFilledInternal(Side side, Price price, Quantity quantity) const;
-	Trades MatchOrdersInternal();
-	void CancelOrderInternal(OrderId orderId);
-	void CancelOrdersInternal(OrderIds orderIds);
+
 	void UpdateLevelsInternal(Price price, Quantity quantity, OrderEvent event);
 	void OrderAddEventInternal(OrderPointer order);
 	void OrderCancelEventInternal(OrderPointer order);

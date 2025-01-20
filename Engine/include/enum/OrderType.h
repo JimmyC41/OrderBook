@@ -5,10 +5,10 @@
 
 enum class OrderType
 {
-	FillAndKill,
-	FillOrKill,
 	GoodTillCancel,
 	Market,
+	FillAndKill,
+	FillOrKill,
 };
 
 inline std::string_view OrderTypeToString(OrderType type)

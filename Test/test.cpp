@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "include/OrderBook.h"
-#include "include/util/InputHandler.h"
+#include "Include/Orderbook/OrderBook.h"
+#include "Include/Util/InputHandler.h"
 
 namespace googletest = ::testing;
 
@@ -19,49 +19,44 @@ TEST_P(OrderBookTestsFixture, OrderbookTestSuite)
 	const auto file = OrderBookTestsFixture::TestFolderPath / GetParam();
 
 	InputHandler handler;
-	const auto [events, result] = handler.GetOrderInformations(file);
-
-	auto GetOrder = [](const Information& event)
-	{
-		return std::make_shared<Order>
-		(
-			event.orderId_,
-			event.orderType_,
-			event.side_,
-			event.price_,
-			event.quantity_
-		);
-	};
-
-	auto GetOrderModify = [](const Information& event)
-	{
-			return OrderModify
-			{
-				event.orderId_,
-				event.side_,
-				event.price_,
-				event.quantity_,
-			};
-	};
+	const auto [events, result] = handler.GetEventInformationsFromFile(file);
 
 	OrderBook orderbook;
-	for (const auto& event : events)
+
+	// Sequentially process order requests from the file
+
+	for (const auto& info : events)
 	{
-		switch (event.eventType_)
+		switch (info.eventType_)
 		{
 			case EventType::AddOrder:
-				orderbook.AddOrder(GetOrder(event));
+				orderbook.AddOrderToQueue
+				(
+					info.orderId_,
+					info.orderType_,
+					info.side_,
+					info.price_,
+					info.quantity_
+				);
 				break;
 			case EventType::ModifyOrder:
-				orderbook.ModifyOrder(GetOrderModify(event));
+				orderbook.ModifyOrderToQueue
+				(
+					info.orderId_,
+					info.side_,
+					info.price_,
+					info.quantity_
+				);
 				break;
 			case EventType::CancelOrder:
-				orderbook.CancelOrder(event.orderId_);
+				orderbook.CancelOrderToQueue(info.orderId_);
 				break;
 			default:
 				throw std::logic_error("Unsupported event.");
 		}
 	}
+
+	// Assert
 
 	const auto& orderbookInfos = orderbook.GetOrderInfos();
 	ASSERT_EQ(orderbook.Size(), result.allCount_);
