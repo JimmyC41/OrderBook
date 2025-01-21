@@ -26,6 +26,7 @@
     <ClCompile Include="Src\QueueManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Benchmark\Include\BenchmarkParams.h" />
     <ClInclude Include="include\Enum\OrderEvent.h" />
     <ClInclude Include="include\Enum\OrderType.h" />
     <ClInclude Include="include\Enum\Side.h" />

@@ -5,7 +5,7 @@ std::shared_ptr<spdlog::logger> FileLogger::logger_ = nullptr;
 void FileLogger::Init(const std::string_view path)
 {
 	static std::once_flag flag;
-	std::call_once(flag, []() { spdlog::init_thread_pool(8192, 1); });
+	std::call_once(flag, []() { spdlog::init_thread_pool(800'000, 4); });
 
 	std::filesystem::path logPath(path);
 	std::filesystem::path logDir = logPath.parent_path();
@@ -15,16 +15,14 @@ void FileLogger::Init(const std::string_view path)
 	if (logDir.empty() && !std::filesystem::exists(logDir))
 		std::filesystem::create_directories(logDir);
 
-	// Scrub the log file
-
-	std::ofstream ofs(logPath, std::ios::trunc);
-	if (!ofs)
-		throw std::runtime_error("Failed to open log file for truncation.");
-	ofs.close();
-
 	// Create the async logger
 
-	auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logPath.string(), true);
+	size_t maxFileSize = 1 * 1024 * 1024 * 1024; // 1 GB
+	size_t maxFiles = 10; // 10 GB
+
+	auto fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+		logPath.string(), maxFileSize, maxFiles);
+	
 	logger_ = std::make_shared<spdlog::async_logger>(
 		"FileLogger", fileSink, spdlog::thread_pool(), spdlog::async_overflow_policy::block);
 	spdlog::register_logger(logger_);

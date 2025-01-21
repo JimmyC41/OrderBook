@@ -139,6 +139,10 @@
     <ClCompile Include="..\Engine\src\OrderBook.cpp" />
     <ClCompile Include="..\Engine\Src\QueueManager.cpp" />
     <ClCompile Include="Benchmark.cpp" />
+    <ClCompile Include="Src\OrderGenerator.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Include\OrderGenerator.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -27,5 +27,6 @@
     <ClInclude Include="Include\Util\EventInformation.h" />
     <ClInclude Include="Include\Util\TestResult.h" />
     <ClInclude Include="Include\Log\FileLogger.h" />
+    <ClInclude Include="..\Benchmark\Include\BenchmarkParams.h" />
   </ItemGroup>
 </Project>

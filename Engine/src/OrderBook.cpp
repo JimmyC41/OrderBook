@@ -40,7 +40,7 @@ void OrderBook::Display() const
 	}
 
 	std::cout << "------ Displaying the Orderbook ------\n";
-	std::cout << std::format("Orderbook contains {} orders\n", orders_.size()) << std::endl;
+	std::cout << std::format("Orderbook contains {} outstanding orders\n", orders_.size()) << std::endl;
 
 	auto orderInfos = GetOrderInfos();
 	auto bidLevelInfos = orderInfos.GetBids();

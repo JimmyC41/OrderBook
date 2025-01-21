@@ -7,10 +7,14 @@ namespace googletest = ::testing;
 class OrderBookTestsFixture : public googletest::TestWithParam<const char*>
 {
 private:
+
 	const static inline std::filesystem::path Root{ std::filesystem::current_path() };
 	const static inline std::filesystem::path TestFolder{ "TestFiles" };
+
 public:
+
 	const static inline std::filesystem::path TestFolderPath{ Root / TestFolder };
+
 };
 
 
@@ -21,9 +25,9 @@ TEST_P(OrderBookTestsFixture, OrderbookTestSuite)
 	InputHandler handler;
 	const auto [events, result] = handler.GetEventInformationsFromFile(file);
 
-	OrderBook orderbook;
-
 	// Sequentially process order requests from the file
+
+	OrderBook orderbook;
 
 	for (const auto& info : events)
 	{
@@ -49,7 +53,10 @@ TEST_P(OrderBookTestsFixture, OrderbookTestSuite)
 				);
 				break;
 			case EventType::CancelOrder:
-				orderbook.CancelOrderToQueue(info.orderId_);
+				orderbook.CancelOrderToQueue
+				(
+					info.orderId_
+				);
 				break;
 			default:
 				throw std::logic_error("Unsupported event.");
