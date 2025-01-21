@@ -5,6 +5,8 @@
 #include "Payload.h"
 #include "EventType.h"
 
+// Struct to encapsulate order request information to the Orderbook
+
 struct QueueEvent
 {
 	EventType event_;

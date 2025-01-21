@@ -95,11 +95,24 @@ OrderBookLevelInfos OrderBook::GetOrderInfos() const
 	return OrderBookLevelInfos{ bidInfos, askInfos };
 }
 
-Trades OrderBook::AddOrderInternal(OrderPointer order)
+Trades OrderBook::AddOrderInternal(const AddOrderPayload& payload)
 {
+	// Parse the payload into a new Order instance
+	auto order = std::make_shared<Order>
+	(
+		payload.orderId_,
+		payload.orderType_,
+		payload.side_,
+		payload.price_,
+		payload.quantity_
+	);
+
+
 	if (orders_.contains(order->GetOrderId()))
 	{
-		// std::cout << std::format("Add: Order with {} already exists!\n", order->GetOrderId()) << std::flush;
+		FileLogger::Get()->info(
+			"{}: Add order request denied. The order already exists.",
+			order->GetOrderId());
 		return { };
 	}
 
@@ -108,7 +121,9 @@ Trades OrderBook::AddOrderInternal(OrderPointer order)
 	if (order->GetOrderType() == OrderType::FillAndKill &&
 		!CanMatchInternal(order->GetSide(), order->GetPrice()))
 	{
-		// std::cout << std::format("Add: FAK Order {} cannot be matched!\n", order->GetOrderId()) << std::flush;
+		FileLogger::Get()->info(
+			"{}: Add order request denied. Fill and kill order cannot be matched.",
+			order->GetOrderId());
 		return { };
 	}
 
@@ -116,8 +131,10 @@ Trades OrderBook::AddOrderInternal(OrderPointer order)
 
 	if (order->GetOrderType() == OrderType::FillOrKill &&
 		!CanBeFullyFilledInternal(order->GetSide(), order->GetPrice(), order->GetRemainingQuantity()))
-	{
-		// std::cout << std::format("Add: FOK Order {} cannot be fully filled!\n", order->GetOrderId()) << std::flush;
+	{		
+		FileLogger::Get()->info(
+			"{}: Add order request denied. Fill or kill order cannot be filled.",
+			order->GetOrderId());
 		return { };
 	}
 
@@ -154,35 +171,78 @@ Trades OrderBook::AddOrderInternal(OrderPointer order)
 
 	// Update the level info struct
 
-	OrderAddEventInternal(order);
-	// std::cout << std::format("Add: {}\n", order->ToString()) << std::flush;
+	UpdateLevelOnAddOrder(order);
+
+	// Log successful add order
+
+	FileLogger::Get()->info(
+		"{}: Order added successfully. Info: {{ {} }}",
+		order->GetOrderId(),
+		order->ToString());
 
 	// Run matching algorithm and return new trades (if any)
 
 	return MatchOrdersInternal();
 }
 
-Trades OrderBook::ModifyOrderInternal(OrderModify order)
+Trades OrderBook::ModifyOrderInternal(const ModifyOrderPayload& payload)
 {
+	// Parse the payload into an OrderModify instance
+
+	auto order = OrderModify
+	{
+		payload.orderId_,
+		payload.side_,
+		payload.price_,
+		payload.quantity_
+	};
+
 	OrderType orderType;
 
 	if (!orders_.contains(order.GetOrderId()))
-		// std::cout << std::format("Modify: Order {} does not exist!\n", order.GetOrderId());
+	{
+		FileLogger::Get()->info(
+			"{}: Modify order request denied. Order does not exist.",
+			order.GetOrderId());
 		return { };
+	}
 
 	const auto& [existingOrder, _] = orders_.at(order.GetOrderId());
 	orderType = existingOrder->GetOrderType();
 
-	// Cancel the existing order and add the modified order, returning any trades
+	FileLogger::Get()->info(
+		"{}: Request to modify order accepted.",
+		order.GetOrderId());
 
-	CancelOrderInternal(order.GetOrderId());
-	return AddOrderInternal(order.ToOrderPointer(orderType));
+	// Create a CancelOrderPayload for the existing order and process
+
+	auto oldOrderId = CancelOrderPayload{ order.GetOrderId() };
+	CancelOrderInternal(oldOrderId);
+
+	// Create an AddOrderPayload for the modified order and process
+
+	auto newOrderPayload = AddOrderPayload
+	{
+		order.GetOrderId(),
+		orderType,
+		order.GetSide(),
+		order.GetPrice(),
+		order.GetQuantity()
+	};
+
+	return AddOrderInternal(newOrderPayload);
 }
 
-void OrderBook::CancelOrderInternal(OrderId orderId)
+void OrderBook::CancelOrderInternal(const CancelOrderPayload& payload)
 {
+	// Parse the payload into an OrderId instance
+
+	auto orderId = payload.orderId_;
+
 	if (!orders_.contains(orderId))
-		// std::cout << std::format("Cancel: Order {} does not exist!\n", orderId);
+		FileLogger::Get()->info(
+			"{}: Request to cancel order denied. Order does not exist.",
+			orderId);
 		return;
 
 	// Remove order from the aggregate orders map
@@ -208,9 +268,12 @@ void OrderBook::CancelOrderInternal(OrderId orderId)
 
 	// Update the levels info struct
 
-	OrderCancelEventInternal(order);
+	UpdateLevelOnCancelOrder(order);
 
-	// std::cout << std::format("Cancel: {}\n", order->ToString());
+	FileLogger::Get()->info(
+		"{}: Order cancelled successfully. Info: {{ {} }}",
+		orderId,
+		order->ToString());
 }
 
 Trades OrderBook::MatchOrdersInternal()
@@ -232,8 +295,12 @@ Trades OrderBook::MatchOrdersInternal()
 		{
 			auto& [_, orders] = *side.begin();
 			auto& best = orders.front();
+
 			if (best->GetOrderType() == OrderType::FillAndKill)
-				CancelOrderInternal(best->GetOrderId());
+			{
+				auto payload = CancelOrderPayload{ best->GetOrderId() };
+				CancelOrderInternal(payload);
+			}
 		};
 
 	while (!bids_.empty() && !asks_.empty())
@@ -268,8 +335,8 @@ Trades OrderBook::MatchOrdersInternal()
 
 			// Update the level infos struct
 
-			OrderMatchEventInternal(bid->GetPrice(), quantity, bid->IsFilled());
-			OrderMatchEventInternal(ask->GetPrice(), quantity, ask->IsFilled());
+			UpdateLevelOnMatchOrders(bid->GetPrice(), quantity, bid->IsFilled());
+			UpdateLevelOnMatchOrders(ask->GetPrice(), quantity, ask->IsFilled());
 		}
 
 		// Clear level if all orders have been filled
@@ -363,7 +430,7 @@ void OrderBook::UpdateLevelsInternal(Price price, Quantity quantity, OrderEvent 
 	if (levelDepth.count_ == 0) levels_.erase(price);
 }
 
-void OrderBook::OrderAddEventInternal(OrderPointer order)
+void OrderBook::UpdateLevelOnAddOrder(OrderPointer order)
 {
 	UpdateLevelsInternal
 	(
@@ -373,7 +440,7 @@ void OrderBook::OrderAddEventInternal(OrderPointer order)
 	);
 }
 
-void OrderBook::OrderCancelEventInternal(OrderPointer order)
+void OrderBook::UpdateLevelOnCancelOrder(OrderPointer order)
 {
 	UpdateLevelsInternal
 	(
@@ -383,7 +450,7 @@ void OrderBook::OrderCancelEventInternal(OrderPointer order)
 	);
 }
 
-void OrderBook::OrderMatchEventInternal(Price price, Quantity quantity, bool isFullyFilled)
+void OrderBook::UpdateLevelOnMatchOrders(Price price, Quantity quantity, bool isFullyFilled)
 {
 	UpdateLevelsInternal
 	(
@@ -401,36 +468,10 @@ void OrderBook::HandleEvent(const QueueEvent& event)
 	{
 		using T = std::decay_t<decltype(payload)>;
 		if constexpr (std::is_same_v<T, AddOrderPayload>)
-			HandleAddOrderInternal(payload);
+			AddOrderInternal(payload);
 		else if constexpr (std::is_same_v<T, ModifyOrderPayload>)
-			HandleModifyOrderInternal(payload);
+			ModifyOrderInternal(payload);
 		else if constexpr (std::is_same_v<T, CancelOrderPayload>)
-			HandleCancelOrderInternal(payload);
+			CancelOrderInternal(payload);
 	}, event.payload_);
-}
-
-void OrderBook::HandleAddOrderInternal(const AddOrderPayload& payload)
-{
-	AddOrderInternal(std::make_shared<Order>(
-		payload.orderId_,
-		payload.orderType_,
-		payload.side_,
-		payload.price_,
-		payload.quantity_
-	));
-}
-
-void OrderBook::HandleModifyOrderInternal(const ModifyOrderPayload& payload)
-{
-	ModifyOrderInternal(OrderModify{
-		payload.orderId_,
-		payload.side_,
-		payload.price_,
-		payload.quantity_
-	});
-}
-
-void OrderBook::HandleCancelOrderInternal(const CancelOrderPayload& payload)
-{
-	CancelOrderInternal(payload.orderId_);
 }

@@ -5,6 +5,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\InputHandler.cpp" />
     <ClCompile Include="Src\QueueManager.cpp" />
+    <ClCompile Include="Src\FileLogger.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Enum\OrderEvent.h" />
@@ -25,5 +26,6 @@
     <ClInclude Include="Include\Queue\EventType.h" />
     <ClInclude Include="Include\Util\EventInformation.h" />
     <ClInclude Include="Include\Util\TestResult.h" />
+    <ClInclude Include="Include\Log\FileLogger.h" />
   </ItemGroup>
 </Project>

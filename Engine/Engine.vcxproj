@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Src\FileLogger.cpp" />
     <ClCompile Include="src\InputHandler.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\OrderBook.cpp" />
@@ -28,6 +29,7 @@
     <ClInclude Include="include\Enum\OrderEvent.h" />
     <ClInclude Include="include\Enum\OrderType.h" />
     <ClInclude Include="include\Enum\Side.h" />
+    <ClInclude Include="Include\Log\FileLogger.h" />
     <ClInclude Include="include\Orderbook\LevelInfo.h" />
     <ClInclude Include="include\Orderbook\Order.h" />
     <ClInclude Include="include\Orderbook\OrderBook.h" />
@@ -131,6 +133,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

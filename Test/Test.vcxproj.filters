@@ -5,6 +5,7 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="..\Engine\src\OrderBook.cpp" />
     <ClCompile Include="..\Engine\src\InputHandler.cpp" />
+    <ClCompile Include="..\Engine\Src\FileLogger.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />

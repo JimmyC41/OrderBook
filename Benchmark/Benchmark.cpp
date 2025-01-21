@@ -84,7 +84,7 @@ void consumer(boost::lockfree::queue<EventInformation>& queue, OrderBook& book, 
 void BenchmarkOrderBook(int numEvents)
 {
     OrderBook book;
-    boost::lockfree::queue<EventInformation> queue(128);
+    boost::lockfree::queue<EventInformation> queue(1024);
     std::atomic<bool> done{ false };
     
     auto start = std::chrono::high_resolution_clock::now();
@@ -109,8 +109,7 @@ void BenchmarkOrderBook(int numEvents)
 int main() {
     std::cout << "Running random OrderBook Benchmarks...\n";
     BenchmarkOrderBook(1000);
-    BenchmarkOrderBook(100000);
-    BenchmarkOrderBook(1000000);
-    BenchmarkOrderBook(10000000);
+    // BenchmarkOrderBook(100000);
+    // BenchmarkOrderBook(1000000);
     return 0;
 }
