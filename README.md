@@ -20,9 +20,9 @@ The following benchmark result uses the following parameters to simulate real-li
 
 **WARNING:** Running the benchmark in Benchmark.cpp will generate ~2GB of log files in Benchmark/Debug. Make sure to comment out FileLogger in OrderBook.cpp to disable logging.
 
-![Benchmark Results] (images/BenchmarkResult)
+![Benchmark Results] (BenchmarkResult.png)
 
 You may also wish to display outstanding orders sitting on the orderbook following the simulation. Note that the 'final' state of the orderbook is only displayed once ALL orders have been matched (the thread will block until all events in the queue have been processed). Expect a slight delay if you simulate a large number of orders (1,000,000 and above). For reference, here's what the log and orderbook looks like after 25 random events.
 
-![Display] (images/ExampleDisplay)
-![Order Log] (images/ExampleLog)
+![Display] (ExampleDisplay.png)
+![Order Log] (ExampleLog.png)
