@@ -1,5 +1,5 @@
 # Order Book Engine
-* Supports the following order types: GTC, Market, FAK, FOK.
+* Supports the following order types: GTC, Market, FAK, FOK. Price-time priority applies.
 * Simultaneous order requests handled synchronously through a lock-free queue (provided by the Boost library).
 * Log of orders and trades written to a generated file.
 
@@ -18,11 +18,11 @@ The following benchmark result uses the following parameters to simulate real-li
 * Prices: Median of 1000.0 and std deviation of 50.0.
 * Quantity: LogNormal(3.0, 0.5).
 
-**WARNING:** Running the benchmark in Benchmark.cpp will generate ~2GB of log files in Benchmark/Debug. Make sure to comment out FileLogger in OrderBook.cpp to disable logging.
+⚠ **WARNING** ⚠ Running the benchmark in Benchmark.cpp will generate ~2GB of log files in Benchmark/Debug. Make sure to comment out FileLogger in OrderBook.cpp to disable logging.
 
-![Benchmark Results] (BenchmarkResult.png)
+<img src="BenchmarkResult.png" alt="Benchmark Results" width="750">
 
 You may also wish to display outstanding orders sitting on the orderbook following the simulation. Note that the 'final' state of the orderbook is only displayed once ALL orders have been matched (the thread will block until all events in the queue have been processed). Expect a slight delay if you simulate a large number of orders (1,000,000 and above). For reference, here's what the log and orderbook looks like after 25 random events.
 
-![Display] (ExampleDisplay.png)
-![Order Log] (ExampleLog.png)
+<img src="ExampleLog.png" alt="Order logs of 25 random orders" width="500">
+<img src="ExampleDisplay.png" alt="Order book state after 25 random orders" width="500">
