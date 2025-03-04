@@ -4,7 +4,7 @@
 * Log of orders and trades written to a generated file.
 
 ### Project Goals
-1. Implement best practices gleaned from Meyer's "Effective Modern C++." Code is much 'prettier' compared to the absolute backend atrocity that is TexasHoldEmV1, my previous project.
+1. Implement best practices gleaned from Meyer's "Effective Modern C++."
 2. Gain familiarity with the C++ concurrency API.
 3. Use the unit testing framework provided by GTest.
 
